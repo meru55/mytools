@@ -1,17 +1,202 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <title>マイツールボックス</title>
-    <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 60px auto; }
-        h1 { font-size: 1.8rem; }
-        .tool { display: block; padding: 16px; margin: 12px 0; background: #f0f0f0; border-radius: 8px; text-decoration: none; color: #333; }
-        .tool:hover { background: #ddd; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyToolbox</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0c0c0e;
+      --surface:  #141417;
+      --card:     #1a1a1f;
+      --border:   #2a2a35;
+      --accent:   #e53e3e;
+      --accent2:  #ff6b6b;
+      --text:     #f0f0f5;
+      --muted:    #8888a0;
+      --dim:      #555568;
+      --radius:   14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Header ── */
+    header {
+      width: 100%;
+      padding: 28px 48px 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent), #c53030);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Main content ── */
+    main {
+      width: 100%;
+      max-width: 900px;
+      padding: 52px 24px 80px;
+    }
+
+    .section-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 20px;
+    }
+
+    /* ── Tool grid ── */
+    .tools {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .tool-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      text-decoration: none;
+      color: var(--text);
+      transition: background 0.18s, border-color 0.18s, transform 0.15s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(229,62,62,0.06), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .tool-card:hover {
+      background: #1f1f26;
+      border-color: #3a3a4a;
+      transform: translateY(-2px);
+    }
+
+    .tool-card:hover::before { opacity: 1; }
+
+    .tool-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .tool-icon.red    { background: rgba(229,62,62,0.15); }
+    .tool-icon.blue   { background: rgba(66,153,225,0.15); }
+    .tool-icon.green  { background: rgba(72,187,120,0.15); }
+    .tool-icon.purple { background: rgba(159,122,234,0.15); }
+
+    .tool-info h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .tool-info p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .tool-arrow {
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--dim);
+      font-size: 18px;
+      transition: color 0.18s, right 0.18s;
+    }
+
+    .tool-card:hover .tool-arrow {
+      color: var(--accent2);
+      right: 14px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: auto;
+      padding: 24px;
+      font-size: 0.75rem;
+      color: var(--dim);
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-    <h1>🧰 マイツールボックス</h1>
-    <a class="tool" href="/youtube">▶ YouTube ダウンローダー</a>
+  <header>
+    <div class="logo">🧰</div>
+    <div>
+      <h1>MyToolbox</h1>
+      <p>便利なウェブツール集</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="section-label">ツール一覧</div>
+    <div class="tools">
+
+      <a class="tool-card" href="/youtube">
+        <div class="tool-icon red">▶</div>
+        <div class="tool-info">
+          <h3>YouTube ダウンローダー</h3>
+          <p>動画・音声を MP4 / MP3 で保存。<br>プレイリスト・字幕にも対応。</p>
+        </div>
+        <span class="tool-arrow">›</span>
+      </a>
+
+      <!-- 追加ツールはここにカードを追加 -->
+
+    </div>
+  </main>
+
+  <footer>MyToolbox &copy; 2025</footer>
 </body>
 </html>

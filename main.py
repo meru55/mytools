@@ -244,6 +244,7 @@ def _build_ydl_opts(task_id: str, fmt: str, quality: str) -> dict:
 
     has_ffmpeg = shutil.which("ffmpeg") is not None
     max_height = _parse_quality(quality)
+    task = _tasks.get(task_id, {})
 
     opts: dict = {
         "outtmpl": str(task_dir / "%(title)s.%(ext)s"),
@@ -259,14 +260,17 @@ def _build_ydl_opts(task_id: str, fmt: str, quality: str) -> dict:
 
     if fmt == "音声 (mp3)":
         if not has_ffmpeg:
-            raise RuntimeError("音声(mp3)ダウンロードには ffmpeg が必要です。")
-        opts["format"] = "bestaudio/best"
-        opts["postprocessors"] = [
-            {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}
-        ]
+            # No ffmpeg: download best audio as-is (webm/m4a)
+            opts["format"] = "bestaudio/best"
+            task["logs"].append("ffmpeg未検出: 音声をそのままの形式でダウンロードします（mp3変換不可）")
+        else:
+            opts["format"] = "bestaudio/best"
+            opts["postprocessors"] = [
+                {"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"}
+            ]
     elif fmt == "動画 (mp4)":
-        if max_height:
-            if has_ffmpeg:
+        if has_ffmpeg:
+            if max_height:
                 opts["format"] = (
                     f"bestvideo[ext=mp4][height<={max_height}]+bestaudio[ext=m4a]/"
                     f"bestvideo[height<={max_height}]+bestaudio[ext=m4a]/"
@@ -274,18 +278,21 @@ def _build_ydl_opts(task_id: str, fmt: str, quality: str) -> dict:
                 )
             else:
                 opts["format"] = (
-                    f"best[ext=mp4][height<={max_height}]/best[height<={max_height}]/best[ext=mp4]/best"
-                )
-        else:
-            if has_ffmpeg:
-                opts["format"] = (
                     "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
                     "bestvideo+bestaudio[ext=m4a]/bestvideo+bestaudio/best"
                 )
+            opts["merge_output_format"] = "mp4"
+        else:
+            # No ffmpeg: use single-file formats only, broad fallback chain
+            if max_height:
+                opts["format"] = (
+                    f"best[ext=mp4][height<={max_height}]/"
+                    f"best[height<={max_height}]/"
+                    f"best[ext=mp4]/best"
+                )
             else:
                 opts["format"] = "best[ext=mp4]/best"
-        if has_ffmpeg:
-            opts["merge_output_format"] = "mp4"
+            task["logs"].append("ffmpeg未検出: 利用可能な最良の単一ファイル形式でダウンロードします。")
     else:
         opts["format"] = "best"
 

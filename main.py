@@ -50,7 +50,11 @@ async def youtube_info(request: Request):
     if not url:
         return {"error": "URLが必要です"}
     try:
-        ydl_base: dict = {"quiet": True, "no_warnings": True}
+        ydl_base: dict = {
+            "quiet": True,
+            "no_warnings": True,
+            "extractor_args": {"youtube": {"player_client": ["ios", "tv_embedded", "web"]}},
+        }
         if COOKIES_PATH.exists():
             ydl_base["cookiefile"] = str(COOKIES_PATH)
         with yt_dlp.YoutubeDL(ydl_base) as ydl:
@@ -247,6 +251,8 @@ def _build_ydl_opts(task_id: str, fmt: str, quality: str) -> dict:
         "quiet": True,
         "no_warnings": True,
         "progress_hooks": [lambda d: _progress_hook(task_id, d)],
+        # Use iOS/TV client to bypass bot detection without cookies
+        "extractor_args": {"youtube": {"player_client": ["ios", "tv_embedded", "web"]}},
     }
     if COOKIES_PATH.exists():
         opts["cookiefile"] = str(COOKIES_PATH)

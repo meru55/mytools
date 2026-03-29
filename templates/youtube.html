@@ -477,6 +477,7 @@
     <button class="tab-btn active" data-tab="download">ダウンロード</button>
     <button class="tab-btn" data-tab="queue">キュー <span id="queue-count-badge"></span></button>
     <button class="tab-btn" data-tab="history">履歴</button>
+    <button class="tab-btn" data-tab="settings">設定</button>
   </div>
 
   <!-- ══════════════════════════════════════ -->
@@ -623,6 +624,40 @@
     </div>
 
   </div><!-- /tab-history -->
+
+
+  <!-- ══════════════════════════════════════ -->
+  <!--  Tab: 設定                             -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-settings">
+
+    <div class="card">
+      <div style="margin-bottom:16px;">
+        <div style="font-size:0.95rem;font-weight:600;margin-bottom:6px;">YouTube Cookie 認証</div>
+        <div style="font-size:0.82rem;color:var(--muted);line-height:1.7;margin-bottom:14px;">
+          「Sign in to confirm you're not a bot」エラーが出る場合、ブラウザのCookieを渡すことで解決できます。<br>
+          ブラウザ拡張機能 <strong style="color:var(--text)">Get cookies.txt LOCALLY</strong> などで
+          YouTube の <code style="font-family:var(--mono);font-size:0.8rem;background:#111;padding:1px 5px;border-radius:4px;">cookies.txt</code>（Netscape形式）をエクスポートしてアップロードしてください。
+        </div>
+
+        <div id="cookie-status-bar" style="display:none;margin-bottom:12px;"></div>
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <label class="btn btn-ghost" style="cursor:pointer;margin:0;">
+            📂 cookies.txt を選択
+            <input type="file" id="cookie-file-input" accept=".txt,text/plain" style="display:none" onchange="uploadCookies(this)">
+          </label>
+          <button class="btn btn-danger btn-sm" id="cookie-delete-btn" onclick="deleteCookies()" style="display:none;">削除</button>
+        </div>
+
+        <div style="margin-top:16px;font-size:0.78rem;color:var(--dim);">
+          ヒント: Chrome系なら <em>EditThisCookie</em> や <em>Get cookies.txt LOCALLY</em>、
+          Firefox なら <em>cookies.txt</em> 拡張でエクスポートできます。
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-settings -->
 
 </div><!-- /page -->
 
@@ -1138,6 +1173,56 @@ function switchToTab(name) {
     p.classList.toggle('active', p.id === 'tab-' + name);
   });
   if (name === 'history') loadHistory();
+  if (name === 'settings') checkCookieStatus();
+}
+
+// ──────────────────────────────────────────────────
+//  Cookie management
+// ──────────────────────────────────────────────────
+async function checkCookieStatus() {
+  try {
+    const res = await fetch('/api/youtube/cookies/status');
+    const data = await res.json();
+    renderCookieStatus(data.exists);
+  } catch {}
+}
+
+function renderCookieStatus(exists) {
+  const bar = document.getElementById('cookie-status-bar');
+  const delBtn = document.getElementById('cookie-delete-btn');
+  if (exists) {
+    bar.style.display = 'flex';
+    bar.style.alignItems = 'center';
+    bar.style.gap = '8px';
+    bar.innerHTML = `<span style="color:var(--ok)">✓</span><span style="font-size:0.85rem;color:#68d391;">cookies.txt が設定されています（認証済み）</span>`;
+    delBtn.style.display = 'inline-flex';
+  } else {
+    bar.style.display = 'flex';
+    bar.innerHTML = `<span style="font-size:0.85rem;color:var(--dim);">cookies.txt 未設定（匿名アクセス）</span>`;
+    delBtn.style.display = 'none';
+  }
+}
+
+async function uploadCookies(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res = await fetch('/api/youtube/cookies', {method: 'POST', body: formData});
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    renderCookieStatus(true);
+  } catch (e) {
+    alert('アップロードに失敗しました: ' + e.message);
+  }
+  input.value = '';
+}
+
+async function deleteCookies() {
+  if (!confirm('cookies.txtを削除しますか？')) return;
+  await fetch('/api/youtube/cookies', {method: 'DELETE'});
+  renderCookieStatus(false);
 }
 
 function escapeHtml(str) {

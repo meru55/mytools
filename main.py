@@ -8,12 +8,14 @@ import uuid
 from pathlib import Path
 
 import yt_dlp
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
-HISTORY_PATH = Path.home() / ".ytdownloader" / "history.json"
-HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+CONFIG_DIR = Path.home() / ".ytdownloader"
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+HISTORY_PATH = CONFIG_DIR / "history.json"
+COOKIES_PATH = CONFIG_DIR / "cookies.txt"
 
 TEMP_DIR = Path(tempfile.gettempdir()) / "ytdownloader_web"
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -48,7 +50,10 @@ async def youtube_info(request: Request):
     if not url:
         return {"error": "URLが必要です"}
     try:
-        with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True}) as ydl:
+        ydl_base: dict = {"quiet": True, "no_warnings": True}
+        if COOKIES_PATH.exists():
+            ydl_base["cookiefile"] = str(COOKIES_PATH)
+        with yt_dlp.YoutubeDL(ydl_base) as ydl:
             info = ydl.extract_info(url, download=False)
 
         is_playlist = info.get("_type") == "playlist"
@@ -193,6 +198,31 @@ async def clear_youtube_history():
     return {"ok": True}
 
 
+@app.post("/api/youtube/cookies")
+async def upload_cookies(file: UploadFile = File(...)):
+    content = await file.read()
+    # Validate it looks like a Netscape cookies file
+    text = content.decode("utf-8", errors="replace")
+    if not any(line.startswith("# Netscape") or "\t" in line for line in text.splitlines()[:5]):
+        return {"error": "Netscape形式のcookies.txtファイルを選択してください。"}
+    COOKIES_PATH.write_bytes(content)
+    return {"ok": True, "message": "cookies.txtを保存しました。"}
+
+
+@app.delete("/api/youtube/cookies")
+async def delete_cookies():
+    try:
+        COOKIES_PATH.unlink(missing_ok=True)
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+@app.get("/api/youtube/cookies/status")
+async def cookies_status():
+    return {"exists": COOKIES_PATH.exists()}
+
+
 # ─── Worker ─────────────────────────────────────────
 
 def _parse_quality(quality: str) -> int | None:
@@ -218,6 +248,8 @@ def _build_ydl_opts(task_id: str, fmt: str, quality: str) -> dict:
         "no_warnings": True,
         "progress_hooks": [lambda d: _progress_hook(task_id, d)],
     }
+    if COOKIES_PATH.exists():
+        opts["cookiefile"] = str(COOKIES_PATH)
 
     if fmt == "音声 (mp3)":
         if not has_ffmpeg:
